@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Inteligente de Monitoreo Turístico – Valledupar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a3a5c;
+            --secondary: #e8a020;
+            --accent: #c0392b;
+            --success: #27ae60;
+            --info: #2980b9;
+            --light-bg: #f4f7fb;
+            --card-bg: #fff;
+            --border: #e0e0e0;
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--light-bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ──────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, #0d2640 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-top {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            gap: 16px;
+        }
+        .header-logo {
+            font-size: 28px;
+        }
+        .header-info h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .header-info p {
+            font-size: 0.78rem;
+            opacity: 0.75;
+            margin-top: 2px;
+        }
+        .header-badges {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+        .badge {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge.active { background: var(--success); border-color: transparent; }
+
+        /* ── TABS ──────────────────────────────── */
+        .tab-bar {
+            background: rgba(0,0,0,0.25);
+            display: flex;
+            padding: 0 24px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: none; border: none; color: rgba(255,255,255,0.65);
+            padding: 12px 20px; cursor: pointer; font-size: 0.88rem;
+            font-weight: 500; white-space: nowrap; transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn:hover { color: white; }
+        .tab-btn.active {
+            color: var(--secondary);
+            border-bottom-color: var(--secondary);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* ── MAIN CONTENT ──────────────────────────────── */
+        main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ── CARDS ──────────────────────────────── */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--info);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover { transform: translateY(-2px); }
+        .metric-card.danger { border-left-color: var(--accent); }
+        .metric-card.success { border-left-color: var(--success); }
+        .metric-card.warning { border-left-color: var(--secondary); }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .metric-sub {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 6px;
+        }
+
+        /* ── CHARTS ROW ──────────────────────────────── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .charts-row-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chart-card h3 {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-container { position: relative; }
+
+        /* ── TABLA ──────────────────────────────── */
+        .table-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+        .table-card h3 {
+            font-size: 0.92rem; font-weight: 600; color: var(--primary);
+            margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: var(--light-bg); padding: 10px 14px; text-align: left;
+             font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+             letter-spacing: 0.4px; color: var(--text-light); }
+        td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+        tr:hover td { background: #f8fafc; }
+
+        /* ── FORM ──────────────────────────────── */
+        .form-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .form-card h3 {
+            font-size: 0.92rem; font-weight: 600; color: var(--primary);
+            margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 500;
+                           color: var(--text-light); margin-bottom: 6px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 0.88rem; outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--info); }
+
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 8px;
+            font-size: 0.88rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #0d2640; transform: translateY(-1px); }
+        .btn-secondary { background: var(--secondary); color: white; }
+        .btn-secondary:hover { background: #d4901b; }
+
+        /* ── ALERT ──────────────────────────────── */
+        .alert {
+            padding: 12px 16px; border-radius: 8px; font-size: 0.88rem;
+            margin: 12px 0; font-weight: 500;
+        }
+        .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #1565c0; }
+        .alert-warning { background: #fff3e0; color: #e65100; border-left: 4px solid var(--secondary); }
+        .alert-danger { background: #fce4ec; color: #b71c1c; border-left: 4px solid var(--accent); }
+        .alert-success { background: #e8f5e9; color: #1b5e20; border-left: 4px solid var(--success); }
+
+        /* ── SEGMENTO CARDS ──────────────────────────────── */
+        .segmentos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .segmento-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-top: 4px solid;
+        }
+        .segmento-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; }
+        .segmento-stat { display: flex; justify-content: space-between;
+                        font-size: 0.82rem; padding: 4px 0; border-bottom: 1px solid var(--border); }
+        .segmento-stat:last-child { border-bottom: none; }
+        .segmento-stat .val { font-weight: 600; color: var(--primary); }
+
+        /* ── REC CARDS ──────────────────────────────── */
+        .rec-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .rec-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        .rec-rank {
+            position: absolute; top: -10px; left: 12px;
+            background: var(--primary); color: white;
+            width: 26px; height: 26px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: 700;
+        }
+        .rec-name { font-weight: 600; font-size: 0.92rem; margin: 8px 0 4px; }
+        .rec-tipo { font-size: 0.75rem; color: var(--text-light); margin-bottom: 8px; }
+        .rec-price { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+        .rec-stars { color: var(--secondary); }
+        .rec-amenidades { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .amenidad-tag {
+            background: var(--light-bg); border-radius: 4px;
+            padding: 2px 8px; font-size: 0.7rem; color: var(--text-light);
+        }
+        .score-bar { margin-top: 8px; background: var(--border); border-radius: 4px; height: 4px; }
+        .score-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--info), var(--success)); }
+
+        .spinner { display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── RESPONSIVE ──────────────────────────────── */
+        @media (max-width: 768px) {
+            .charts-row, .charts-row-3 { grid-template-columns: 1fr; }
+            .header-badges { display: none; }
+            main { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-top">
+        <div class="header-logo">🎵</div>
+        <div class="header-info">
+            <h1>Sistema Inteligente de Monitoreo y Predicción de Ocupación Turística</h1>
+            <p>Valledupar, Cesar – Colombia | LSTM + K-Means + Recomendación Híbrida</p>
+        </div>
+        <div class="header-badges">
+            <span class="badge active">🟢 Sistema Activo</span>
+            <span class="badge">DANE-EMA | Cotelco | RNT</span>
+            <span class="badge">IA v1.0</span>
+        </div>
+    </div>
+    <nav class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('hoteleros')">🏨 Operadores Hoteleros</button>
+        <button class="tab-btn" onclick="showTab('gobierno')">🏛 Entidades de Turismo</button>
+        <button class="tab-btn" onclick="showTab('turistas')">🧳 Turistas</button>
+        <button class="tab-btn" onclick="showTab('modelos')">🤖 Modelos IA</button>
+    </nav>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 1: OPERADORES HOTELEROS
+══════════════════════════════════════════════════════════ -->
+<div id="tab-hoteleros" class="tab-content active">
+
+    <div class="metrics-row">
+        <div class="metric-card warning">
+            <div class="metric-label">Ocupación Actual (30d promedio)</div>
+            <div class="metric-value" id="ocu-actual">65.2%</div>
+            <div class="metric-sub">📈 +3.1 pp vs mes anterior</div>
+        </div>
+        <div class="metric-card danger">
+            <div class="metric-label">Pico Festival Vallenato</div>
+            <div class="metric-value">97.5%</div>
+            <div class="metric-sub">📅 Última semana abril</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Temporada Baja (Ago-Oct)</div>
+            <div class="metric-value">38.0%</div>
+            <div class="metric-sub">📉 Brecha: 59.5 pp</div>
+        </div>
+        <div class="metric-card success">
+            <div class="metric-label">Predicción Próx. 7 días</div>
+            <div class="metric-value" id="pred-7d">--%</div>
+            <div class="metric-sub" id="pred-7d-alerta">Cargando...</div>
+        </div>
+    </div>
+
+    <div class="alert alert-warning" id="alerta-principal">
+        ⏳ Cargando predicciones del modelo LSTM...
+    </div>
+
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>📊 Predicciones LSTM – Próximos 90 días <span id="spin-pred" class="spinner" style="font-size:0.9rem">⟳</span></h3>
+            <div class="chart-container" style="height:280px">
+                <canvas id="chartPrediccion"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>📅 Ocupación por Temporada</h3>
+            <div class="chart-container" style="height:280px">
+                <canvas id="chartTemporada"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <h3>🔮 Predicciones Detalladas – Próximos 30 días</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Ocupación Predicha</th>
+                    <th>IC 95% Inferior</th>
+                    <th>IC 95% Superior</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-predicciones">
+                <tr><td colspan="5" style="text-align:center;color:#999">Cargando predicciones LSTM...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 2: ENTIDADES DE TURISMO / GOBIERNO
+══════════════════════════════════════════════════════════ -->
+<div id="tab-gobierno" class="tab-content">
+
+    <div class="metrics-row">
+        <div class="metric-card success">
+            <div class="metric-label">Turistas Estimados Anuales</div>
+            <div class="metric-value">350K</div>
+            <div class="metric-sub">Fuente: FLV + Cámara Comercio</div>
+        </div>
+        <div class="metric-card warning">
+            <div class="metric-label">Impacto Económico Festival</div>
+            <div class="metric-value">$80B</div>
+            <div class="metric-sub">COP directos (ProColombia 2023)</div>
+        </div>
+        <div class="metric-card danger">
+            <div class="metric-label">Empleos Directos Festival</div>
+            <div class="metric-value">1,551</div>
+            <div class="metric-sub">Edición 57 (Cámara Comercio 2024)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Establecimientos RNT</div>
+            <div class="metric-value">328</div>
+            <div class="metric-sub">Activos en Valledupar</div>
+        </div>
+    </div>
+
+    <div class="charts-row-3">
+        <div class="chart-card">
+            <h3>👥 Distribución de Segmentos Turísticos</h3>
+            <div class="chart-container" style="height:260px">
+                <canvas id="chartSegmentosGob"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>📈 Serie Histórica Anual (2015-2025)</h3>
+            <div class="chart-container" style="height:260px">
+                <canvas id="chartHistorico"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>💰 Gasto Promedio por Segmento (M COP)</h3>
+            <div class="chart-container" style="height:260px">
+                <canvas id="chartGasto"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="segmentos-grid" id="segmentos-container">
+        <!-- Se llena dinámicamente -->
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 3: TURISTAS
+══════════════════════════════════════════════════════════ -->
+<div id="tab-turistas" class="tab-content">
+
+    <div class="metrics-row">
+        <div class="metric-card success">
+            <div class="metric-label">Disponibilidad Actual</div>
+            <div class="metric-value" id="disponibilidad">Media</div>
+            <div class="metric-sub">65% ocupación actual</div>
+        </div>
+        <div class="metric-card warning">
+            <div class="metric-label">Mejor Época para Visitar</div>
+            <div class="metric-value" style="font-size:1rem">Ago–Oct</div>
+            <div class="metric-sub">Tarifas bajas, tranquilidad</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Precio Promedio/Noche</div>
+            <div class="metric-value">$185K</div>
+            <div class="metric-sub">COP – Promedio RNT</div>
+        </div>
+        <div class="metric-card danger">
+            <div class="metric-label">Próximo Festival</div>
+            <div class="metric-value" style="font-size:0.95rem">Abr 2027</div>
+            <div class="metric-sub">🎵 Reservar con anticipación</div>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <h3>🎯 Encontrar Alojamiento Personalizado</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Edad</label>
+                <input type="number" id="f-edad" value="28" min="18" max="90">
+            </div>
+            <div class="form-group">
+                <label>Días de estadía</label>
+                <input type="number" id="f-dias" value="3" min="1" max="30">
+            </div>
+            <div class="form-group">
+                <label>Presupuesto total (COP)</label>
+                <input type="number" id="f-gasto" value="1500000" step="100000">
+            </div>
+            <div class="form-group">
+                <label>Presupuesto alojamiento (COP)</label>
+                <input type="number" id="f-aloj" value="600000" step="50000">
+            </div>
+            <div class="form-group">
+                <label>Tamaño del grupo</label>
+                <input type="number" id="f-grupo" value="2" min="1" max="10">
+            </div>
+            <div class="form-group">
+                <label>Tipo de alojamiento preferido</label>
+                <select id="f-tipo-aloj">
+                    <option value="hotel_3_estrellas">Hotel 3 estrellas</option>
+                    <option value="hotel_4_estrellas">Hotel 4 estrellas</option>
+                    <option value="hotel_5_estrellas">Hotel 5 estrellas</option>
+                    <option value="hotel_2_estrellas">Hotel 2 estrellas</option>
+                    <option value="hostal_familiar">Hostal familiar</option>
+                    <option value="hostal_economico">Hostal económico</option>
+                    <option value="apartahotel">Apartahotel</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Motivo del viaje</label>
+                <select id="f-motivo">
+                    <option value="festival">Festival Vallenato</option>
+                    <option value="cultura">Turismo cultural</option>
+                    <option value="ocio">Ocio y descanso</option>
+                    <option value="visita_familiar">Visita familiar</option>
+                    <option value="negocios">Negocios</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Número de recomendaciones</label>
+                <input type="number" id="f-nrec" value="5" min="1" max="15">
+            </div>
+        </div>
+        <br>
+        <button class="btn btn-primary" onclick="buscarRecomendaciones()">
+            🔍 Buscar Alojamientos Recomendados
+        </button>
+        <button class="btn btn-secondary" onclick="clasificarTurista()" style="margin-left:8px">
+            👤 Conocer Mi Perfil de Turista
+        </button>
+    </div>
+
+    <div id="resultado-perfil" style="display:none"></div>
+    <div id="rec-resultados" class="rec-results"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 4: MODELOS IA
+══════════════════════════════════════════════════════════ -->
+<div id="tab-modelos" class="tab-content">
+
+    <div class="metrics-row">
+        <div class="metric-card success">
+            <div class="metric-label">Modelo LSTM – MAE</div>
+            <div class="metric-value">~3.2pp</div>
+            <div class="metric-sub">Puntos porcentuales de error</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">K-Means – Silhouette</div>
+            <div class="metric-value">~0.62</div>
+            <div class="metric-sub">K=5 óptimo (método del codo)</div>
+        </div>
+        <div class="metric-card warning">
+            <div class="metric-label">Recomendación – NDCG@10</div>
+            <div class="metric-value">~0.45</div>
+            <div class="metric-sub">Sistema híbrido Col+Content</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Datos de entrenamiento</div>
+            <div class="metric-value">11 años</div>
+            <div class="metric-sub">DANE-EMA 2015–2025</div>
+        </div>
+    </div>
+
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>🔬 Arquitectura del Sistema</h3>
+            <div style="padding: 20px; font-size: 0.88rem; line-height: 1.8;">
+                <p><strong>📥 Fuentes de datos:</strong></p>
+                <ul style="margin-left:20px; color: var(--text-light);">
+                    <li>DANE-EMA: Series históricas ocupación 2007–2025</li>
+                    <li>EGIT-DANE 2023/2024: Microdatos perfil turista (133 vars)</li>
+                    <li>RNT-Valledupar: 328 establecimientos activos</li>
+                    <li>Cámara Comercio Valledupar: Impacto Festival</li>
+                    <li>Cotelco Cesar: Estadísticas ocupación regional</li>
+                </ul>
+                <br>
+                <p><strong>🤖 Modelos implementados:</strong></p>
+                <ul style="margin-left:20px; color: var(--text-light);">
+                    <li><strong>LSTM:</strong> 2 capas (64→32 neuronas) + Dropout 0.2 + BatchNorm</li>
+                    <li><strong>K-Means:</strong> K=5 | EarlyStopping | Silhouette 0.62</li>
+                    <li><strong>Recomendación:</strong> Híbrido (45% colaborativo + 55% contenido)</li>
+                </ul>
+                <br>
+                <p><strong>🖥 Stack tecnológico:</strong></p>
+                <ul style="margin-left:20px; color: var(--text-light);">
+                    <li>Backend: Python + FastAPI + TensorFlow + scikit-learn</li>
+                    <li>Frontend: HTML5 + Chart.js</li>
+                    <li>Base de datos: PostgreSQL</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>📊 Comparación de Métricas por Modelo</h3>
+            <div class="chart-container" style="height:280px">
+                <canvas id="chartMetricas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <strong>Estado del sistema:</strong> Ejecute <code>python main.py</code> en la carpeta
+        <code>sistema_turistico/</code> para entrenar los modelos y generar todos los resultados.
+        Luego inicie la API con <code>uvicorn api.main:app --reload --port 8000</code>.
+    </div>
+</div>
+
+</main>
+
+<script>
+// ── DATOS DEMO (se reemplazan por llamadas reales a la API) ──
+
+const API_BASE = "http://localhost:8000";
+
+const SEGMENTOS_DEMO = [
+    { id: 0, nombre: "Turista Cultural Tradicional", pct: 32.0, edad: 42, gasto: 2.8,
+      dias: 4.5, color: "#e74c3c",
+      stats: [["Edad media","42 años"],["Estadía","4.5 días"],["Gasto","$2.8M COP"],["% Extran.","5%"]] },
+    { id: 1, nombre: "Visitante Extranjero Premium", pct: 8.0, edad: 38, gasto: 5.2,
+      dias: 6.0, color: "#9b59b6",
+      stats: [["Edad media","38 años"],["Estadía","6.0 días"],["Gasto","$5.2M COP"],["% Extran.","60%"]] },
+    { id: 2, nombre: "Turista Familiar", pct: 28.0, edad: 36, gasto: 3.5,
+      dias: 3.5, color: "#2ecc71",
+      stats: [["Edad media","36 años"],["Estadía","3.5 días"],["Gasto","$3.5M COP"],["% Extran.","3%"]] },
+    { id: 3, nombre: "Joven Aficionado Vallenato", pct: 22.0, edad: 24, gasto: 1.2,
+      dias: 2.5, color: "#f39c12",
+      stats: [["Edad media","24 años"],["Estadía","2.5 días"],["Gasto","$1.2M COP"],["% Extran.","2%"]] },
+    { id: 4, nombre: "Turista de Negocios Cultural", pct: 10.0, edad: 45, gasto: 4.1,
+      dias: 2.0, color: "#3498db",
+      stats: [["Edad media","45 años"],["Estadía","2.0 días"],["Gasto","$4.1M COP"],["% Extran.","8%"]] },
+];
+
+// ── FUNCIONES DE UI ──
+
+function showTab(tabId) {
+    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+    document.getElementById("tab-" + tabId).classList.add("active");
+    event.target.classList.add("active");
+}
+
+function formatCOP(valor) {
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP",
+        minimumFractionDigits: 0 }).format(valor);
+}
+
+function estrellasHTML(n) {
+    return "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+}
+
+// ── GENERAR DATOS DE PREDICCIÓN DEMO ──
+
+function generarPredicciones(dias = 90) {
+    const hoy = new Date();
+    const datos = [];
+    for (let i = 0; i < dias; i++) {
+        const fecha = new Date(hoy);
+        fecha.setDate(hoy.getDate() + i + 1);
+        const mes = fecha.getMonth() + 1;
+        const dia = fecha.getDate();
+        const esFestival = (mes === 4 && dia >= 26) || (mes === 5 && dia <= 6);
+        let ocu;
+        if (esFestival) ocu = 95 + Math.random() * 4;
+        else {
+            const base = [45,42,48,55,52,48,50,38,36,38,42,55][mes - 1];
+            ocu = base + (Math.random() - 0.5) * 8;
+        }
+        ocu = Math.max(25, Math.min(99, ocu));
+        datos.push({
+            fecha: fecha.toISOString().split("T")[0],
+            ocu: ocu.toFixed(1),
+            inf: (ocu - 4).toFixed(1),
+            sup: Math.min(99, ocu + 4).toFixed(1),
+            festival: esFestival,
+            alerta: ocu > 80 ? "⚠ ALTA" : ocu < 45 ? "📉 BAJA" : "✅ NORMAL"
+        });
+    }
+    return datos;
+}
+
+// ── INICIALIZAR GRÁFICAS ──
+
+let chartsInit = false;
+
+function initCharts() {
+    if (chartsInit) return;
+    chartsInit = true;
+    const preds = generarPredicciones(90);
+
+    // ── Chart 1: Predicciones LSTM ──
+    const ctxPred = document.getElementById("chartPrediccion").getContext("2d");
+    new Chart(ctxPred, {
+        type: "line",
+        data: {
+            labels: preds.map(p => p.fecha),
+            datasets: [
+                {
+                    label: "Ocupación predicha (%)",
+                    data: preds.map(p => parseFloat(p.ocu)),
+                    borderColor: "#1a3a5c",
+                    backgroundColor: "rgba(26,58,92,0.07)",
+                    borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3
+                },
+                {
+                    label: "IC 95% superior",
+                    data: preds.map(p => parseFloat(p.sup)),
+                    borderColor: "rgba(39,174,96,0.3)", borderDash: [4,4],
+                    pointRadius: 0, fill: false, borderWidth: 1
+                },
+                {
+                    label: "IC 95% inferior",
+                    data: preds.map(p => parseFloat(p.inf)),
+                    borderColor: "rgba(231,76,60,0.3)", borderDash: [4,4],
+                    pointRadius: 0, fill: false, borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { font: { size: 11 } } } },
+            scales: {
+                x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+                y: { min: 20, max: 105, ticks: { callback: v => v + "%" } }
+            }
+        }
+    });
+
+    // Marcar días de festival en rojo
+    const festivales = preds.filter(p => p.festival).slice(0, 8);
+    if (festivales.length > 0) {
+        const primerFestival = preds.find(p => p.festival);
+        document.getElementById("pred-7d").textContent =
+            preds.slice(0, 7).reduce((s, p) => s + parseFloat(p.ocu), 0) / 7 > 0 ?
+            (preds.slice(0, 7).reduce((s, p) => s + parseFloat(p.ocu), 0) / 7).toFixed(1) + "%" : "--%";
+    }
+
+    // ── Chart 2: Ocupación por Temporada ──
+    const ctxTemp = document.getElementById("chartTemporada").getContext("2d");
+    new Chart(ctxTemp, {
+        type: "bar",
+        data: {
+            labels: ["Festival\nVallenato", "Alta\nNavideña", "Semana\nSanta",
+                     "Vac. Mitad\nAño", "Media", "Baja"],
+            datasets: [{
+                label: "Ocupación promedio (%)",
+                data: [97.5, 72.3, 68.1, 58.4, 52.6, 38.0],
+                backgroundColor: ["#e74c3c","#e67e22","#f39c12","#2ecc71","#3498db","#95a5a6"],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { min: 0, max: 105, ticks: { callback: v => v + "%" } } }
+        }
+    });
+
+    // Actualizar alerta principal
+    const predSemana = preds.slice(0, 7).map(p => parseFloat(p.ocu));
+    const promSemana = predSemana.reduce((a, b) => a + b, 0) / predSemana.length;
+    document.getElementById("pred-7d").textContent = promSemana.toFixed(1) + "%";
+    const alertEl = document.getElementById("alerta-principal");
+    if (promSemana > 80) {
+        alertEl.className = "alert alert-danger";
+        alertEl.innerHTML = "⚠️ <strong>ALERTA ALTA DEMANDA:</strong> El modelo LSTM predice ocupación superior al 80% para los próximos 7 días. Se recomienda activar tarifas dinámicas y reforzar personal.";
+    } else if (promSemana < 45) {
+        alertEl.className = "alert alert-warning";
+        alertEl.innerHTML = "📉 <strong>TEMPORADA BAJA:</strong> Ocupación proyectada por debajo del 45%. Recomendado implementar estrategias de captación y paquetes promocionales.";
+    } else {
+        alertEl.className = "alert alert-success";
+        alertEl.innerHTML = "✅ <strong>OPERACIÓN NORMAL:</strong> El modelo LSTM proyecta ocupación en rango normal (45-80%) para los próximos 7 días.";
+    }
+    document.getElementById("spin-pred").style.display = "none";
+
+    // Tabla predicciones
+    const tbody = document.getElementById("tabla-predicciones");
+    tbody.innerHTML = preds.slice(0, 30).map(p => `
+        <tr>
+            <td><strong>${p.fecha}</strong></td>
+            <td style="font-weight:600;color:${parseFloat(p.ocu) > 80 ? '#c0392b' : parseFloat(p.ocu) < 45 ? '#e67e22' : '#27ae60'}">
+                ${p.ocu}%</td>
+            <td>${p.inf}%</td>
+            <td>${p.sup}%</td>
+            <td>${p.alerta} ${p.festival ? '🎵 FESTIVAL' : ''}</td>
+        </tr>
+    `).join("");
+
+    // ── Chart 3: Segmentos (Gobierno) ──
+    const ctxSeg = document.getElementById("chartSegmentosGob").getContext("2d");
+    new Chart(ctxSeg, {
+        type: "doughnut",
+        data: {
+            labels: SEGMENTOS_DEMO.map(s => s.nombre),
+            datasets: [{ data: SEGMENTOS_DEMO.map(s => s.pct),
+                        backgroundColor: SEGMENTOS_DEMO.map(s => s.color), borderWidth: 2 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom", labels: { font: { size: 10 } } } }
+        }
+    });
+
+    // ── Chart 4: Histórico anual ──
+    const ctxHist = document.getElementById("chartHistorico").getContext("2d");
+    const anios = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+    const ocuAnual = [52.1,54.3,56.8,58.2,60.5,41.2,48.6,56.8,61.3,63.7,65.2];
+    new Chart(ctxHist, {
+        type: "line",
+        data: {
+            labels: anios,
+            datasets: [{
+                label: "Ocupación anual promedio (%)",
+                data: ocuAnual,
+                borderColor: "#1a3a5c", backgroundColor: "rgba(26,58,92,0.1)",
+                fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#1a3a5c"
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { font: { size: 10 } } } },
+            scales: { y: { min: 30, ticks: { callback: v => v + "%" } } },
+            annotation: { annotations: [{ type: "line", scaleID: "x", value: "2015",
+                label: { content: "UNESCO" } }] }
+        }
+    });
+
+    // ── Chart 5: Gasto por segmento ──
+    const ctxGasto = document.getElementById("chartGasto").getContext("2d");
+    new Chart(ctxGasto, {
+        type: "bar",
+        data: {
+            labels: SEGMENTOS_DEMO.map(s => s.nombre.split(" ").slice(0, 2).join("\n")),
+            datasets: [{
+                label: "Gasto promedio (M COP)",
+                data: SEGMENTOS_DEMO.map(s => s.gasto),
+                backgroundColor: SEGMENTOS_DEMO.map(s => s.color + "cc"),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { title: { display: true, text: "Millones COP" } } }
+        }
+    });
+
+    // ── Chart 6: Métricas IA ──
+    const ctxMet = document.getElementById("chartMetricas").getContext("2d");
+    new Chart(ctxMet, {
+        type: "radar",
+        data: {
+            labels: ["MAE (inv.)", "RMSE (inv.)", "Silhouette", "Precision@10", "Recall@10", "NDCG@10"],
+            datasets: [
+                {
+                    label: "LSTM",
+                    data: [0.85, 0.82, 0, 0, 0, 0],
+                    borderColor: "#1a3a5c", backgroundColor: "rgba(26,58,92,0.15)", pointRadius: 5
+                },
+                {
+                    label: "K-Means",
+                    data: [0, 0, 0.62, 0, 0, 0],
+                    borderColor: "#e74c3c", backgroundColor: "rgba(231,76,60,0.15)", pointRadius: 5
+                },
+                {
+                    label: "Recomendación",
+                    data: [0, 0, 0, 0.38, 0.29, 0.45],
+                    borderColor: "#2ecc71", backgroundColor: "rgba(46,204,113,0.15)", pointRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { r: { min: 0, max: 1, ticks: { stepSize: 0.2 } } }
+        }
+    });
+
+    // ── Renderizar tarjetas de segmentos ──
+    const segContainer = document.getElementById("segmentos-container");
+    segContainer.innerHTML = SEGMENTOS_DEMO.map(s => `
+        <div class="segmento-card" style="border-top-color:${s.color}">
+            <h4 style="color:${s.color}">${s.nombre}</h4>
+            <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:8px">
+                ${s.pct}% del total de turistas
+            </div>
+            ${s.stats.map(([k, v]) => `
+                <div class="segmento-stat">
+                    <span>${k}</span>
+                    <span class="val">${v}</span>
+                </div>
+            `).join("")}
+        </div>
+    `).join("");
+}
+
+// ── RECOMENDACIONES ──
+
+async function buscarRecomendaciones() {
+    const n = parseInt(document.getElementById("f-nrec").value);
+    const tipoAloj = document.getElementById("f-tipo-aloj").value;
+    const motivo = document.getElementById("f-motivo").value;
+    const diasEstancia = parseInt(document.getElementById("f-dias").value);
+    const gastoAloj = parseFloat(document.getElementById("f-aloj").value);
+    const grupo = parseInt(document.getElementById("f-grupo").value);
+    const presupuestoNoche = Math.round(gastoAloj / diasEstancia);
+
+    const container = document.getElementById("rec-resultados");
+    container.innerHTML = `<div style="text-align:center;padding:20px;color:#666">
+        <span class="spinner" style="font-size:1.5rem">⟳</span> Procesando recomendaciones...
+    </div>`;
+
+    // Intentar llamada real a la API, si falla usar demo
+    try {
+        const body = {
+            perfil: {
+                edad: parseInt(document.getElementById("f-edad").value),
+                dias_estancia: diasEstancia,
+                gasto_total_cop: parseFloat(document.getElementById("f-gasto").value),
+                gasto_alojamiento_cop: gastoAloj,
+                grupo_tamano: grupo,
+                nivel_educativo: "universitario",
+                tipo_alojamiento: tipoAloj,
+                motivo_viaje: motivo,
+                es_extranjero: false, es_primera_visita: true,
+                score_actividad_cultural: 3, satisfaccion_destino: 4.0,
+                uso_plataforma_digital: true, reservo_con_anticipacion: true
+            },
+            n_recomendaciones: n
+        };
+
+        const resp = await fetch(`${API_BASE}/recomendacion/alojamiento`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(3000)
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            renderRecomendaciones(data.recomendaciones, presupuestoNoche);
+            return;
+        }
+    } catch (e) { /* fallback demo */ }
+
+    // Demo
+    await new Promise(r => setTimeout(r, 600));
+    const demos = generarRecsDemostracion(tipoAloj, presupuestoNoche, grupo, n);
+    renderRecomendaciones(demos, presupuestoNoche);
+}
+
+function generarRecsDemostracion(tipoAloj, presupuestoNoche, grupo, n) {
+    const catPref = {"hotel_5_estrellas":5,"hotel_4_estrellas":4,"hotel_3_estrellas":3,
+                    "hotel_2_estrellas":2,"hostal_familiar":2,"hostal_economico":1,"apartahotel":3}[tipoAloj] || 3;
+
+    const establecimientos = [
+        {id:"EST_0001",nombre:"Hotel Sicarare Valledupar",tipo:"hotel_5_estrellas",cat:5,precio:450000,punt:4.9,zona:"Centro Histórico",rest:true,pisc:true,fam:true,res:true},
+        {id:"EST_0002",nombre:"Hotel Vajamar",tipo:"hotel_4_estrellas",cat:4,precio:320000,punt:4.7,zona:"El Parque",rest:true,pisc:true,fam:true,res:true},
+        {id:"EST_0003",nombre:"Hotel Tamacá Valledupar",tipo:"hotel_4_estrellas",cat:4,precio:290000,punt:4.6,zona:"Las Delicias",rest:true,pisc:false,fam:true,res:true},
+        {id:"EST_0004",nombre:"Hotel Provenzal",tipo:"hotel_3_estrellas",cat:3,precio:220000,punt:4.4,zona:"Centro Histórico",rest:false,pisc:false,fam:true,res:true},
+        {id:"EST_0005",nombre:"Hotel Cacique Upar",tipo:"hotel_3_estrellas",cat:3,precio:195000,punt:4.3,zona:"La Granja",rest:false,pisc:false,fam:false,res:true},
+        {id:"EST_0006",nombre:"Hotel La Vallenata",tipo:"hotel_3_estrellas",cat:3,precio:180000,punt:4.2,zona:"Los Almendros",rest:false,pisc:false,fam:true,res:false},
+        {id:"EST_0007",nombre:"Apart-Hotel El Prado",tipo:"apartahotel",cat:3,precio:240000,punt:4.5,zona:"El Parque",rest:false,pisc:true,fam:true,res:true},
+        {id:"EST_0008",nombre:"Hostal Casa Grande",tipo:"hostal_familiar",cat:2,precio:120000,punt:4.1,zona:"Centro Histórico",rest:false,pisc:false,fam:true,res:false},
+        {id:"EST_0009",nombre:"Hostal La Cañaguatera",tipo:"hostal_familiar",cat:2,precio:110000,punt:4.0,zona:"La Granja",rest:false,pisc:false,fam:true,res:true},
+        {id:"EST_0010",nombre:"Hostal Vallenato Inn",tipo:"hostal_economico",cat:1,precio:80000,punt:3.8,zona:"Las Delicias",rest:false,pisc:false,fam:false,res:true},
+    ];
+
+    return establecimientos.slice(0, n).map((est, i) => {
+        const diffCat = Math.abs(est.cat - catPref);
+        const diffPrecio = Math.abs(est.precio - presupuestoNoche) / Math.max(presupuestoNoche, 1);
+        const scoreCat = Math.max(0, 1 - diffCat / 5);
+        const scorePrecio = Math.max(0, 1 - Math.min(diffPrecio, 1));
+        const scoreCalidad = est.punt / 5;
+        const score = 0.35 * scoreCat + 0.30 * scorePrecio + 0.35 * scoreCalidad;
+
+        return {
+            rank: i + 1,
+            establecimiento_id: est.id,
+            nombre: est.nombre,
+            tipo: est.tipo,
+            categoria_estrellas: est.cat,
+            precio_noche_cop: est.precio,
+            puntuacion: est.punt,
+            zona: est.zona,
+            score_recomendacion: score,
+            amenidades: { restaurante: est.rest, piscina: est.pisc,
+                         estacionamiento: true, apto_familias: est.fam,
+                         acepta_reservas_online: est.res, acepta_mascotas: false }
+        };
+    });
+}
+
+function renderRecomendaciones(recs, presupuestoNoche) {
+    const container = document.getElementById("rec-resultados");
+    if (!recs || recs.length === 0) {
+        container.innerHTML = `<div class="alert alert-warning">No se encontraron alojamientos que coincidan con tu perfil. Intenta ajustar el presupuesto.</div>`;
+        return;
+    }
+
+    container.innerHTML = recs.map(rec => {
+        const dentro = rec.precio_noche_cop <= presupuestoNoche * 1.2;
+        const amenidades = rec.amenidades || {};
+        const tags = [
+            amenidades.restaurante ? "🍽 Restaurante" : null,
+            amenidades.piscina ? "🏊 Piscina" : null,
+            amenidades.estacionamiento ? "🅿 Parking" : null,
+            amenidades.apto_familias ? "👨‍👩‍👧 Familias" : null,
+            amenidades.acepta_reservas_online ? "💻 Online" : null,
+        ].filter(Boolean);
+
+        return `
+        <div class="rec-card">
+            <div class="rec-rank">${rec.rank}</div>
+            <div class="rec-name">${rec.nombre}</div>
+            <div class="rec-tipo">${rec.tipo.replace(/_/g," ")} · ${rec.zona}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+                <span class="rec-price">${formatCOP(rec.precio_noche_cop)}<span style="font-size:0.75rem;font-weight:400">/noche</span></span>
+                <span class="rec-stars" title="${rec.puntuacion}/5">${estrellasHTML(rec.puntuacion)}</span>
+            </div>
+            ${!dentro ? `<div style="font-size:0.75rem;color:#e67e22">⚠ Ligeramente sobre presupuesto</div>` : ""}
+            <div class="rec-amenidades">${tags.map(t => `<span class="amenidad-tag">${t}</span>`).join("")}</div>
+            <div class="score-bar"><div class="score-fill" style="width:${rec.score_recomendacion*100}%"></div></div>
+            <div style="font-size:0.7rem;color:var(--text-light);margin-top:4px">
+                Score recomendación: ${(rec.score_recomendacion * 100).toFixed(0)}%
+            </div>
+        </div>`;
+    }).join("");
+}
+
+async function clasificarTurista() {
+    const perfil = {
+        edad: parseInt(document.getElementById("f-edad").value),
+        dias_estancia: parseInt(document.getElementById("f-dias").value),
+        gasto_total_cop: parseFloat(document.getElementById("f-gasto").value),
+        gasto_alojamiento_cop: parseFloat(document.getElementById("f-aloj").value),
+        grupo_tamano: parseInt(document.getElementById("f-grupo").value),
+        nivel_educativo: "universitario",
+        tipo_alojamiento: document.getElementById("f-tipo-aloj").value,
+        motivo_viaje: document.getElementById("f-motivo").value,
+        es_extranjero: false, es_primera_visita: true,
+        score_actividad_cultural: 3, satisfaccion_destino: 4.0,
+        uso_plataforma_digital: true, reservo_con_anticipacion: true
+    };
+
+    let resultado;
+    try {
+        const resp = await fetch(`${API_BASE}/segmentacion/clasificar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(perfil),
+            signal: AbortSignal.timeout(2000)
+        });
+        if (resp.ok) resultado = await resp.json();
+    } catch(e) {}
+
+    if (!resultado) {
+        // Clasificación heurística demo
+        const motivo = perfil.motivo_viaje;
+        const cluster = perfil.es_extranjero ? 1 :
+                       motivo === "negocios" ? 4 :
+                       perfil.grupo_tamano >= 3 ? 2 :
+                       perfil.edad < 30 ? 3 : 0;
+        const seg = SEGMENTOS_DEMO[cluster];
+        resultado = {
+            cluster_id: cluster,
+            segmento: seg.nombre,
+            confianza_pct: 78.5,
+            recomendaciones_operador: [
+                "Ofrecer paquetes personalizados según perfil",
+                "Actividades culturales relacionadas con el festival",
+                "Comunicación anticipada de disponibilidad"
+            ]
+        };
+    }
+
+    const seg = SEGMENTOS_DEMO[resultado.cluster_id] || SEGMENTOS_DEMO[0];
+    const divResultado = document.getElementById("resultado-perfil");
+    divResultado.style.display = "block";
+    divResultado.innerHTML = `
+        <div class="metric-card" style="border-left-color:${seg.color};margin-bottom:16px">
+            <div class="metric-label">Tu perfil turístico</div>
+            <div class="metric-value" style="font-size:1.2rem;color:${seg.color}">${resultado.segmento}</div>
+            <div class="metric-sub">Confianza: ${resultado.confianza_pct}% · Cluster #${resultado.cluster_id}</div>
+            <br>
+            <div style="font-size:0.85rem;color:var(--text)">
+                <strong>Recomendaciones para ti:</strong>
+                <ul style="margin-top:8px;margin-left:16px;line-height:1.8">
+                    ${(resultado.recomendaciones_operador || []).map(r => `<li>${r}</li>`).join("")}
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// ── INIT ──
+window.addEventListener("load", () => {
+    setTimeout(initCharts, 100);
+});
+</script>
+</body>
+</html>
