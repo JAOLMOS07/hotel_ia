@@ -427,19 +427,54 @@ print('GRAFICAS_OK')
 
 
 def ejecutar_fase_3(df_turistas, output_dir="outputs"):
-    """Función principal de la Fase 3."""
-    print("\n" + "=" * 60)
-    print("FASE 3: Segmentación K-Means de Perfiles Turísticos")
-    print("=" * 60)
+    """Función principal de la Fase 3 con logging y dashboard ampliados."""
+    from models.training_monitor import EntrenamientoLogger, VisualizadorTraining, ReporteEntrenamiento
+
+    logger = EntrenamientoLogger("FASE 3: Segmentación K-Means de Perfiles Turísticos", output_dir)
 
     kmeans = SegmentacionKMeans(output_dir=output_dir)
+
+    logger.log(f"Datos de entrada: {len(df_turistas):,} perfiles de turistas", "INFO")
     kmeans.entrenar(df_turistas)
+    logger.log(f"K óptimo seleccionado: {kmeans.n_clusters_optimo}", "OK")
+
     stats = kmeans.caracterizar_segmentos()
+
+    # Dashboard ampliado con training_monitor
+    try:
+        viz = VisualizadorTraining(output_dir)
+        viz.dashboard_kmeans(
+            inertias=kmeans.inercias,
+            silhouettes=kmeans.silhouettes,
+            X_pca=kmeans.X_pca,
+            labels=kmeans.labels,
+            stats_segmentos=stats,
+            titulo="K-Means — Dashboard de Segmentación Turística\nValledupar, Cesar · Festival de la Leyenda Vallenata"
+        )
+    except Exception as e:
+        logger.log(f"Dashboard K-Means: {e}", "WARN")
+
+    # Reporte CSV
+    rep = ReporteEntrenamiento(output_dir)
+    sil_final = float(kmeans.silhouettes[kmeans.n_clusters_optimo - 2]) if hasattr(kmeans, "silhouettes") else 0.0
+    rep.registrar(
+        fase="Fase 3 - K-Means",
+        modelo=f"KMeans K={kmeans.n_clusters_optimo}",
+        metricas={
+            "Silhouette_Score": round(sil_final, 6),
+            "N_Clusters": kmeans.n_clusters_optimo,
+            "N_Turistas": len(df_turistas),
+        },
+        params={"n_init": 20, "max_iter": 500, "random_state": 42}
+    )
+    rep.guardar()
+
     try:
         kmeans.graficar_resultados()
     except Exception:
-        print("  ⚠ Visualización K-Means omitida (error matplotlib)")
+        logger.log("Visualización K-Means original omitida", "WARN")
     kmeans.guardar_modelo()
+    logger.finalizar()
 
     # Ejemplo de clasificación de un nuevo turista
     print("\n  Ejemplo de clasificación de turista nuevo:")

@@ -220,15 +220,17 @@ class LSTMOcupacionHotelera:
 
     def evaluar(self):
         """
-        Evalúa el modelo con MAE, RMSE y MAPE.
-        Compara con líneas base ARIMA-simplificado y Regresión Lineal.
+        Evalúa el modelo con métricas extendidas (MAE, RMSE, MAPE, SMAPE, R², Theil-U).
+        Compara contra tres baselines: Naive, Media Móvil 7d y Media Histórica.
+        Genera dashboard de entrenamiento con training_monitor.
         """
+        from models.training_monitor import MetricasComparativas, VisualizadorTraining, ReporteEntrenamiento
+
         print("\n" + "─" * 50)
-        print("EVALUACIÓN DEL MODELO")
+        print("EVALUACIÓN DEL MODELO — MÉTRICAS EXTENDIDAS")
         print("─" * 50)
 
         if self.usar_tensorflow:
-            # Predicciones LSTM
             y_pred_scaled = self.model.predict(self.X_test, verbose=0)
             y_pred_full = np.zeros((len(y_pred_scaled), self.n_features))
             y_pred_full[:, 0] = y_pred_scaled.flatten()
@@ -237,36 +239,62 @@ class LSTMOcupacionHotelera:
             y_test_full = np.zeros((len(self.y_test), self.n_features))
             y_test_full[:, 0] = self.y_test
             y_real = self.scaler.inverse_transform(y_test_full)[:, 0]
-
         else:
             y_pred_lstm = self.model.predict(self.X_test_simple)
             y_real = self.y_test_simple
 
-        # Línea base: media móvil (simulación ARIMA simplificada)
-        y_baseline_arima = np.convolve(y_real, np.ones(7)/7, mode='same')
+        # ── Métricas extendidas LSTM ──────────────────────────────
+        mc = MetricasComparativas()
+        metricas_ext = mc.calcular_todas(y_real, y_pred_lstm)
 
-        # Métricas
-        def calcular_metricas(y_true, y_pred, nombre):
-            mae = mean_absolute_error(y_true, y_pred)
-            rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-            mape = np.mean(np.abs((y_true - y_pred) / (y_true + 1e-8))) * 100
-            print(f"\n  {nombre}:")
-            print(f"    MAE:  {mae:.4f}  ({mae*100:.2f} pp)")
-            print(f"    RMSE: {rmse:.4f}  ({rmse*100:.2f} pp)")
-            print(f"    MAPE: {mape:.2f}%")
-            return {"mae": mae, "rmse": rmse, "mape": mape}
+        # ── Baselines ─────────────────────────────────────────────
+        baselines = mc.baselines(y_real)
+        comparativas = {"LSTM (modelo)": metricas_ext}
+        for nombre, y_bl in baselines.items():
+            comparativas[nombre] = mc.calcular_todas(y_real, y_bl)
 
-        metricas_lstm = calcular_metricas(y_real, y_pred_lstm, "LSTM (nuestro modelo)")
-        metricas_baseline = calcular_metricas(y_real, y_baseline_arima, "Línea Base (Media Móvil)")
+        # ── Imprimir tabla ────────────────────────────────────────
+        df_comp = mc.tabla_comparativa(comparativas)
+        print("\n" + df_comp.to_string())
 
-        mejora_mae = (metricas_baseline["mae"] - metricas_lstm["mae"]) / metricas_baseline["mae"] * 100
-        print(f"\n  ✓ Mejora del LSTM sobre línea base: {mejora_mae:.1f}% en MAE")
+        mejora_mae = (comparativas["Naive (t-1)"]["MAE"] - metricas_ext["MAE"]) / \
+                      comparativas["Naive (t-1)"]["MAE"] * 100
+        print(f"\n  ✓ Mejora LSTM vs Naive:        {mejora_mae:.1f}% en MAE")
+        print(f"  ✓ R² (coef. determinación):    {metricas_ext['R²']:.4f}")
+        print(f"  ✓ Theil-U (< 1 = mejor naive): {metricas_ext['Theil-U']:.4f}")
+
+        # ── Dashboard de entrenamiento ────────────────────────────
+        viz = VisualizadorTraining(self.output_dir)
+        viz.dashboard_lstm(
+            history=self.history if self.usar_tensorflow else None,
+            y_real=y_real,
+            y_pred=y_pred_lstm,
+            comparativas=comparativas,
+            titulo="LSTM — Dashboard de Entrenamiento\nPredicción de Ocupación Hotelera · Valledupar, Cesar"
+        )
+
+        # ── Reporte CSV ───────────────────────────────────────────
+        rep = ReporteEntrenamiento(self.output_dir)
+        rep.registrar(
+            fase="Fase 2 - LSTM",
+            modelo="LSTM 2-capas (64→32) + Dropout 0.2",
+            metricas={k: round(v, 6) for k, v in metricas_ext.items()},
+            params={"n_steps": self.n_steps, "n_features": self.n_features,
+                    "usar_tensorflow": self.usar_tensorflow}
+        )
+        rep.guardar()
+
+        # Guardar comparativa CSV
+        df_comp.to_csv(f"{self.output_dir}/lstm_comparativa_modelos.csv", encoding="utf-8-sig")
 
         self.y_pred = y_pred_lstm
         self.y_real = y_real
-        self.metricas = metricas_lstm
+        self.metricas = {"mae": metricas_ext["MAE"], "rmse": metricas_ext["RMSE"],
+                         "mape": metricas_ext["MAPE (%)"], "r2": metricas_ext["R²"]}
+        self.metricas_ext = metricas_ext
+        self.comparativas = comparativas
 
-        return metricas_lstm
+        return self.metricas
 
     def predecir_proximos_dias(self, df, n_dias=90):
         """
